@@ -138,3 +138,4 @@ sudo certbot --nginx -d namadomainanda.com
   /var/www/data-guru-mengajar/data/jurnal.json
   ```
   Anda bisa menyalin atau mendownload berkas `jurnal.json` ini kapan saja sebagai backup berkala.
+

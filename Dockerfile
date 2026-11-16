@@ -19,3 +19,4 @@ ENV NODE_ENV=production
 ENV ADMIN_PIN=1977
 
 CMD ["node", "server.js"]
+

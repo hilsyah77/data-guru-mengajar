@@ -13,3 +13,4 @@ services:
       - ADMIN_PIN=1977
     volumes:
       - ./data:/app/data
+

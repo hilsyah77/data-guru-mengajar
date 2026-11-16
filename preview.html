@@ -101,9 +101,9 @@
     const DAFTAR_MAPEL_INPUT = MASTER_MAPEL.filter(m => !m.isParent).map(m => m.nama);
     const TINGKAT_LIST = ['VII', 'VIII', 'IX'];
     const KELAS_MAP = {
-      'VII': ['VII.A', 'VII.B', 'VII.C', 'VII.D', 'VII.E'],
-      'VIII': ['VIII.A', 'VIII.B', 'VIII.C', 'VIII.D', 'VIII.E'],
-      'IX': ['IX.A', 'IX.B', 'IX.C', 'IX.D', 'IX.E', 'IX.F', 'IX.G']
+      'VII': ['VII.A', 'VII.B', 'VII.C', 'VII.D', 'VII.E', 'VII.F', 'VII.G', 'VII.H'],
+      'VIII': ['VIII.A', 'VIII.B', 'VIII.C', 'VIII.D', 'VIII.E', 'VIII.F', 'VIII.G', 'VIII.H'],
+      'IX': ['IX.A', 'IX.B', 'IX.C', 'IX.D', 'IX.E', 'IX.F', 'IX.G', 'IX.H', 'IX.I', 'IX.J']
     };
     const ALL_KELAS = [...KELAS_MAP['VII'], ...KELAS_MAP['VIII'], ...KELAS_MAP['IX']];
 
@@ -147,12 +147,12 @@
     function normalizeKelas(str) {
       if (!str) return '';
       let clean = str.trim().toUpperCase().replace(/\s+/g, '');
-      clean = clean.replace(/^9([A-G])$/, 'IX.$1');
-      clean = clean.replace(/^8([A-E])$/, 'VIII.$1');
-      clean = clean.replace(/^7([A-E])$/, 'VII.$1');
-      clean = clean.replace(/^IX([A-G])$/, 'IX.$1');
-      clean = clean.replace(/^VIII([A-E])$/, 'VIII.$1');
-      clean = clean.replace(/^VII([A-E])$/, 'VII.$1');
+      clean = clean.replace(/^9([A-J])$/, 'IX.$1');
+      clean = clean.replace(/^8([A-H])$/, 'VIII.$1');
+      clean = clean.replace(/^7([A-H])$/, 'VII.$1');
+      clean = clean.replace(/^IX([A-J])$/, 'IX.$1');
+      clean = clean.replace(/^VIII([A-H])$/, 'VIII.$1');
+      clean = clean.replace(/^VII([A-H])$/, 'VII.$1');
       return clean;
     }
 
