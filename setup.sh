@@ -1,39 +1,27 @@
 #!/bin/bash
-set -e
 
 DOMAIN="mengajar.mtsasyjtb.cloud"
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "=========================================================="
-echo "🚀 OTOMASI PUBLISH DATA MENGAJAR GURU KE VPS"
-echo "🌐 Domain Target: $DOMAIN"
-echo "📁 Direktori: $APP_DIR"
+echo "🚀 MEMULAI SETUP OTOMATIS DATA MENGAJAR GURU"
+echo "🌐 Domain: $DOMAIN"
+echo "📁 Direktori Aplikasi: $APP_DIR"
 echo "=========================================================="
 
-# 1. Jalankan npm install jika node_modules belum lengkap
-echo "📦 1. Memeriksa dependensi backend..."
-cd "$APP_DIR"
-if [ ! -d "node_modules" ]; then
-    npm install --omit=dev
-fi
+# 1. Konfigurasi Nginx Terlebih Dahulu (Prioritas Utama)
+echo ""
+echo "👉 [Langkah 1/5] Menyiapkan Konfigurasi Nginx..."
 
-# 2. Nyalakan Backend Express dengan PM2 di port 3000
-echo "⚡ 2. Menjalankan Backend Node.js dengan PM2..."
-pm2 delete data-guru-mengajar 2>/dev/null || true
-pm2 start ecosystem.config.cjs
-pm2 save
-
-# 3. Siapkan folder webroot untuk verifikasi SSL
-echo "📂 3. Menyiapkan folder verifikasi SSL..."
 mkdir -p /var/www/html/.well-known/acme-challenge
 chmod -R 755 /var/www/html
 
-# 4. Tulis konfigurasi Nginx untuk domain mengajar.mtsasyjtb.cloud
-echo "🌐 4. Mengonfigurasi Nginx untuk $DOMAIN..."
 cat << 'EOF' > /etc/nginx/sites-available/dataguru
 server {
     listen 80;
     server_name mengajar.mtsasyjtb.cloud;
+
+    client_max_body_size 10M;
 
     location /.well-known/acme-challenge/ {
         root /var/www/html;
@@ -53,25 +41,42 @@ server {
 }
 EOF
 
-# 5. Aktifkan konfigurasi Nginx
-ln -sf /etc/nginx/sites-available/dataguru /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/dataguru /etc/nginx/sites-enabled/dataguru
 
-# 6. Uji dan Reload Nginx (tanpa mematikan service / tanpa bentrok)
-echo "🔄 5. Me-reload Nginx..."
+echo "👉 [Langkah 2/5] Menguji & Reload Nginx..."
 nginx -t
-nginx -s reload
+if [ $? -eq 0 ]; then
+    nginx -s reload || systemctl reload nginx
+    echo "✅ Nginx berhasil di-reload dengan domain $DOMAIN!"
+else
+    echo "❌ Ada error pada konfigurasi Nginx di atas!"
+fi
 
-echo "=========================================================="
-echo "✅ HTTP AKTIF! Menguji penerbitan sertifikat SSL (HTTPS)..."
-echo "=========================================================="
+# 2. Menjalankan Backend Node.js
+echo ""
+echo "👉 [Langkah 3/5] Menyiapkan Backend Node.js..."
+cd "$APP_DIR"
+npm install --omit=dev
 
-# 7. Ambil sertifikat SSL secara otomatis
-CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
+# Pastikan PM2 terpasang
+if ! command -v pm2 &> /dev/null; then
+    npm install -g pm2
+fi
 
-if certbot certonly --webroot -w /var/www/html -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email; then
-    echo "🎉 Sertifikat SSL berhasil diterbitkan!"
+pm2 delete data-guru-mengajar 2>/dev/null || true
+pm2 start ecosystem.config.cjs
+pm2 save
+echo "✅ Backend aktif di port 3000 dengan PM2!"
+
+# 3. Proses Sertifikat SSL (HTTPS)
+echo ""
+echo "👉 [Langkah 4/5] Memproses Sertifikat SSL HTTPS..."
+
+certbot certonly --webroot -w /var/www/html -d "$DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email
+
+if [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+    echo "🎉 Sertifikat SSL HTTPS berhasil didapatkan!"
     
-    # 8. Tulis konfigurasi Nginx lengkap dengan HTTPS
     cat << 'EOF' > /etc/nginx/sites-available/dataguru
 server {
     listen 80;
@@ -102,15 +107,16 @@ server {
 }
 EOF
 
-    nginx -t
-    nginx -s reload
+    nginx -t && (nginx -s reload || systemctl reload nginx)
+    echo ""
     echo "=========================================================="
-    echo "🎉 PUBLISH BERHASIL PENUH DENGAN HTTPS!"
-    echo "👉 Akses: https://$DOMAIN"
+    echo "🎉 SUKSES BESAR! APLIKASI TELAH AKTIF SECARA RESMI:"
+    echo "👉 Buka: https://$DOMAIN"
     echo "=========================================================="
 else
+    echo ""
     echo "=========================================================="
-    echo "⚠️ SSL belum aktif, TETAPI website SUDAH BISA DIAKSES via HTTP:"
-    echo "👉 Akses: http://$DOMAIN"
+    echo "⚠️ SSL sedang diproses, tapi versi HTTP SUDAH BISA DIBUKA:"
+    echo "👉 Buka: http://$DOMAIN"
     echo "=========================================================="
 fi
