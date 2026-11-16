@@ -133,7 +133,10 @@ if (hasDist) {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 } else {
-  // Prioritas 2: Layani preview.html dan berkas statis root (banner, dll)
+  // Prioritas: Layani preview.html (versi standalone siap pakai)
+  app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'preview.html'));
+  });
   app.use(express.static(path.join(__dirname, 'public')));
   app.use(express.static(__dirname));
 
