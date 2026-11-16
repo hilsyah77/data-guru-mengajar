@@ -689,13 +689,34 @@ export default function App() {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [submissionHistory, setSubmissionHistory] = useState([]);
 
+  // Ambil data dari Backend VPS dengan fallback ke LocalStorage
+  const fetchJurnalFromApi = async () => {
+    try {
+      const res = await fetch('/api/jurnal');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setSubmissionHistory(data);
+          localStorage.setItem('riwayat_mengajar_guru', JSON.stringify(data));
+          return true;
+        }
+      }
+    } catch (e) {
+      // Backend offline atau dibuka via file:// lokal, fallback ke LocalStorage
+    }
+    return false;
+  };
+
   useEffect(() => {
+    // Tampilkan cache lokal terlebih dahulu
     try {
       const saved = localStorage.getItem('riwayat_mengajar_guru');
       if (saved) setSubmissionHistory(JSON.parse(saved));
     } catch (e) {
       console.error(e);
     }
+    // Sinkronkan data terbaru dari server VPS
+    fetchJurnalFromApi();
   }, []);
 
   const triggerToast = (message, type = 'success') => {
@@ -777,21 +798,42 @@ export default function App() {
     };
 
     try {
+      let savedToApi = false;
+      try {
+        const res = await fetch('/api/jurnal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          if (Array.isArray(updated)) {
+            setSubmissionHistory(updated);
+            localStorage.setItem('riwayat_mengajar_guru', JSON.stringify(updated));
+            savedToApi = true;
+          }
+        }
+      } catch (err) {
+        console.warn('API backend offline, menyimpan ke penyimpanan lokal');
+      }
+
+      if (!savedToApi) {
+        const currentHistory = JSON.parse(localStorage.getItem('riwayat_mengajar_guru') || '[]');
+        const updatedHistory = [payload, ...currentHistory];
+        localStorage.setItem('riwayat_mengajar_guru', JSON.stringify(updatedHistory));
+        setSubmissionHistory(updatedHistory);
+      }
+
       if (GOOGLE_SCRIPT_URL) {
         await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
-        });
+        }).catch(() => {});
       }
 
-      const currentHistory = JSON.parse(localStorage.getItem('riwayat_mengajar_guru') || '[]');
-      const updatedHistory = [payload, ...currentHistory];
-      localStorage.setItem('riwayat_mengajar_guru', JSON.stringify(updatedHistory));
-      setSubmissionHistory(updatedHistory);
-
-      triggerToast('Presensi mengajar berhasil disimpan!', 'success');
+      triggerToast('Data mengajar berhasil disimpan!', 'success');
       setNamaGuru('');
       setSlotMapel([{ id: 1, mapel: '', kelas: [] }]);
 
@@ -868,11 +910,14 @@ export default function App() {
     triggerToast('Contoh data mengajar berhasil dimuat!', 'success');
   };
 
-  const handleClearData = () => {
-    if (window.confirm('Hapus seluruh riwayat lokal di perangkat ini?')) {
+  const handleClearData = async () => {
+    if (window.confirm('Hapus seluruh riwayat data mengajar?')) {
+      try {
+        await fetch('/api/jurnal', { method: 'DELETE' });
+      } catch (e) {}
       localStorage.removeItem('riwayat_mengajar_guru');
       setSubmissionHistory([]);
-      triggerToast('Data riwayat dibersihkan.', 'success');
+      triggerToast('Data riwayat berhasil dibersihkan.', 'success');
     }
   };
 
